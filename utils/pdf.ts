@@ -1,77 +1,139 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib/es/index';
-import * as FileSystem from 'expo-file-system';
-import { Buffer } from 'buffer';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { supabase } from './supabase';
 
-export async function generateUnsignedPDF(customerName: string, details: string) {
-  // Create a new PDFDocument
+export async function generateUnsignedPDF(customerName: string, customerEmail: string, details: any) {
+  try {
+    // 1. Download the template from Supabase
+    // We try createSignedUrl first as it's more robust for private buckets
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from('pdfs')
+      .createSignedUrl('template.pdf', 60);
+
+    let templateData;
+    if (signedData?.signedUrl) {
+      const response = await fetch(signedData.signedUrl);
+      if (!response.ok) throw new Error(`Template fetch failed: ${response.statusText}`);
+      templateData = await response.blob();
+    } else {
+      // Fallback to direct download
+      const { data, error } = await supabase.storage
+        .from('pdfs')
+        .download('template.pdf');
+      if (error) throw error;
+      templateData = data;
+    }
+
+    if (!templateData) {
+      throw new Error('Template file not accessible in Supabase Storage.');
+    }
+
+    // 2. Load the existing PDF
+    const arrayBuffer = await templateData.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+    const { width, height } = firstPage.getSize();
+
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    const sanitizeText = (text: string) => {
+      if (!text) return '';
+      return String(text).replace(/₹/g, 'INR');
+    };
+
+    const drawText = (text: string, x: number, y: number, size = 10, isBold = false) => {
+      if (!text) return;
+      firstPage.drawText(sanitizeText(text), {
+        x,
+        y: height - y,
+        size,
+        font: isBold ? fontBold : font,
+        color: rgb(0, 0, 0),
+      });
+    };
+
+    // Applicant Details Overlay
+    drawText(customerName, 160, 200, 11, true); 
+    drawText(details.dob, 178, 228);
+    drawText(details.mobile, 380, 228);
+    drawText(customerEmail, 140, 250); 
+    drawText(details.address, 140, 275, 9);
+    drawText(details.idProofNumber, 380, 300);
+
+    // Scheme Details Overlay
+    drawText(`INR ${details.monthlyInstallment}`, 310, 380, 11, true);
+    drawText(details.schemeDuration, 240, 430);
+
+    // Payment Details
+    drawText(details.firstInstallmentDate, 260, 605);
+    drawText(details.preferredPaymentDate, 380, 630);
+
+    // Nominee
+    if (details.nominee?.name) {
+      drawText(details.nominee.name, 110, 710);
+      drawText(details.nominee.relationship, 160, 732);
+      drawText(details.nominee.contact, 360, 732);
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    return pdfBytes;
+  } catch (err: any) {
+    console.warn('Falling back to basic PDF generation:', err.message);
+    return generateBasicPDF(customerName, customerEmail, details, err.message);
+  }
+}
+
+async function generateBasicPDF(customerName: string, customerEmail: string, details: any, errorMessage?: string) {
   const pdfDoc = await PDFDocument.create();
-  const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.addPage([600, 850]);
+  const { height } = page.getSize();
 
-  // Add a blank page to the document
-  const page = pdfDoc.addPage([600, 800]);
-  const { width, height } = page.getSize();
+  const sanitizeText = (text: string) => {
+    if (!text) return '';
+    return String(text).replace(/₹/g, 'INR');
+  };
 
-  // Draw some text
-  page.drawText('CUSTOMER AGREEMENT', {
-    x: 50,
-    y: height - 50,
-    size: 24,
-    font: timesRomanFont,
-    color: rgb(0, 0.53, 0.71),
-  });
+  page.drawText('MOKSHA APPLICATION FORM (Draft)', { x: 50, y: height - 50, size: 20, font: fontBold });
+  
+  if (errorMessage) {
+    page.drawText(`Template Error: ${sanitizeText(errorMessage)}`, { x: 50, y: height - 80, size: 10, font, color: rgb(1, 0, 0) });
+  }
 
-  page.drawText(`Customer Name: ${customerName}`, {
-    x: 50,
-    y: height - 100,
-    size: 16,
-    font: timesRomanFont,
-  });
+  page.drawText(`Full Name: ${sanitizeText(customerName)}`, { x: 50, y: height - 120, size: 12, font });
+  page.drawText(`Email: ${sanitizeText(customerEmail)}`, { x: 50, y: height - 140, size: 12, font });
+  page.drawText(`Installment: INR ${sanitizeText(details.monthlyInstallment)}`, { x: 50, y: height - 160, size: 12, font });
+  page.drawText(`Mobile: ${sanitizeText(details.mobile)}`, { x: 50, y: height - 180, size: 12, font });
 
-  page.drawText('Agreement Details:', {
-    x: 50,
-    y: height - 150,
-    size: 14,
-    font: timesRomanFont,
-  });
-
-  page.drawText(details, {
-    x: 50,
-    y: height - 180,
-    size: 12,
-    font: timesRomanFont,
-    lineHeight: 15,
-    maxWidth: 500,
-  });
-
-  page.drawText('Signature:', {
-    x: 50,
-    y: 150,
-    size: 14,
-    font: timesRomanFont,
-  });
-
-  // Serialize the PDFDocument to bytes (a Uint8Array)
-  const pdfBytes = await pdfDoc.save();
-  return pdfBytes;
+  return await pdfDoc.save();
 }
 
 export async function addSignatureToPDF(pdfBytes: Uint8Array, signatureBase64: string) {
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const pages = pdfDoc.getPages();
   const firstPage = pages[0];
+  const { width } = firstPage.getSize();
 
-  // Embed the signature image
-  const signatureImage = await pdfDoc.embedPng(signatureBase64);
-  const sigDims = signatureImage.scale(0.5);
+  // Strip the "data:image/png;base64," prefix if it exists
+  const base64Data = signatureBase64.includes(',') ? signatureBase64.split(',')[1] : signatureBase64;
+  const signatureImage = await pdfDoc.embedPng(base64Data);
+  
+  // Significantly reduced size to be much smaller
+  const sigWidth = 100;
+  const sigHeight = 30;
 
-  // Draw the signature image on the first page
+  // Draw signature at the bottom right, closer to the corner
   firstPage.drawImage(signatureImage, {
-    x: 50,
-    y: 50,
-    width: sigDims.width,
-    height: sigDims.height,
+    x: width - sigWidth - 100, // Increased from 80 to 100 to move it 20 units LEFT
+    y: 80,                     // Decreased from 90 to 80 to move it 10 units DOWN
+    width: sigWidth,
+    height: sigHeight,
   });
 
-  const signedPdfBytes = await pdfDoc.save();
-  return signedPdfBytes;
+  return await pdfDoc.save();
 }
+
+
+

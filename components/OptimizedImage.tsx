@@ -20,28 +20,38 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   style,
 }) => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  const imageUrl = error 
-    ? getPlaceholderUrl() 
-    : getOptimizedImageUrl(bucket, path, { width, height, quality });
+  // Initialize URL once or when bucket/path changes
+  React.useEffect(() => {
+    setCurrentUrl(getOptimizedImageUrl(bucket, path, { width, height, quality }));
+    setFailed(false);
+    setLoading(true);
+  }, [bucket, path, width, height, quality]);
+
+  const handleError = () => {
+    if (!failed) {
+      setFailed(true);
+      setCurrentUrl(getPlaceholderUrl());
+      setLoading(false);
+    }
+  };
+
+  if (!currentUrl) return <View style={[{ width, height }, style]} />;
 
   return (
     <View style={[styles.container, { width, height }, style]}>
       <Image
-        source={{ uri: imageUrl }}
+        source={{ uri: currentUrl }}
         style={[styles.image, { width, height }]}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
-        onError={() => {
-          setError(true);
-          setLoading(false);
-        }}
-        // Enable native lazy loading on web
+        onError={handleError}
         // @ts-ignore
         loading="lazy"
       />
-      {loading && (
+      {loading && !failed && (
         <View style={styles.loader}>
           <ActivityIndicator color="#007bff" />
         </View>

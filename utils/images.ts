@@ -30,5 +30,5 @@ export function getOptimizedImageUrl(
  * Returns a fallback placeholder image URL.
  */
 export function getPlaceholderUrl() {
-  return 'https://via.placeholder.com/200?text=No+Image';
+  return 'https://placehold.co/200x200?text=No+Image';
 }
