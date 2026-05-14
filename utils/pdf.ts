@@ -53,27 +53,27 @@ export async function generateUnsignedPDF(customerName: string, customerEmail: s
       });
     };
 
-    // Applicant Details Overlay
-    drawText(customerName, 160, 200, 11, true); 
-    drawText(details.dob, 178, 228);
-    drawText(details.mobile, 380, 228);
-    drawText(customerEmail, 140, 250); 
-    drawText(details.address, 140, 275, 9);
-    drawText(details.idProofNumber, 380, 300);
+    // Applicant Details Overlay (Finalized Coordinates)
+    drawText(customerName, 155, 203, 12, true); 
+    drawText(details.dob, 178, 228, 12, true);
+    drawText(details.mobile, 370, 228, 12, true);
+    drawText(customerEmail, 130, 252, 12, true); 
+    drawText(details.address, 135, 277, 12, true);
+    drawText(details.idProofNumber, 370, 302, 12, true);
 
     // Scheme Details Overlay
-    drawText(`INR ${details.monthlyInstallment}`, 310, 380, 11, true);
-    drawText(details.schemeDuration, 240, 430);
+    drawText(`${details.monthlyInstallment}`, 297, 385, 15, true);
+    drawText(details.totalContribution, 230, 433, 15, true);
 
     // Payment Details
-    drawText(details.firstInstallmentDate, 260, 605);
-    drawText(details.preferredPaymentDate, 380, 630);
+    drawText(details.firstInstallmentDate, 245, 608, 14, true);
+    drawText(details.preferredPaymentDate, 375, 633, 12, true);
 
     // Nominee
     if (details.nominee?.name) {
-      drawText(details.nominee.name, 110, 710);
-      drawText(details.nominee.relationship, 160, 732);
-      drawText(details.nominee.contact, 360, 732);
+      drawText(details.nominee.name, 110, 710, 12, true);
+      drawText(details.nominee.relationship, 160, 732, 12, true);
+      drawText(details.nominee.contact, 362, 732, 12, true);
     }
 
     const pdfBytes = await pdfDoc.save();
@@ -113,9 +113,7 @@ async function generateBasicPDF(customerName: string, customerEmail: string, det
 export async function addSignatureToPDF(pdfBytes: Uint8Array, signatureBase64: string) {
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const pages = pdfDoc.getPages();
-  const firstPage = pages[0];
-  const { width } = firstPage.getSize();
-
+  
   // Strip the "data:image/png;base64," prefix if it exists
   const base64Data = signatureBase64.includes(',') ? signatureBase64.split(',')[1] : signatureBase64;
   const signatureImage = await pdfDoc.embedPng(base64Data);
@@ -124,16 +122,16 @@ export async function addSignatureToPDF(pdfBytes: Uint8Array, signatureBase64: s
   const sigWidth = 100;
   const sigHeight = 30;
 
-  // Draw signature at the bottom right, closer to the corner
-  firstPage.drawImage(signatureImage, {
-    x: width - sigWidth - 100, // Increased from 80 to 100 to move it 20 units LEFT
-    y: 80,                     // Decreased from 90 to 80 to move it 10 units DOWN
-    width: sigWidth,
-    height: sigHeight,
+  // Draw signature on EVERY page at the bottom right
+  pages.forEach((page) => {
+    const { width } = page.getSize();
+    page.drawImage(signatureImage, {
+      x: width - sigWidth - 100, // Position verified previously
+      y: 80,                     
+      width: sigWidth,
+      height: sigHeight,
+    });
   });
 
   return await pdfDoc.save();
 }
-
-
-

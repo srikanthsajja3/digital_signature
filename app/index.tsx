@@ -29,7 +29,10 @@ export default function AdminDashboard() {
   const [generatedLink, setGeneratedLink] = useState('');
 
   const duration = 11;
-  const totalContribution = monthlyInstallment ? (parseInt(monthlyInstallment) * duration).toString() : '0';
+  const monthlyVal = monthlyInstallment ? parseInt(monthlyInstallment) : 0;
+  // Logic: 10 months at full price + 1st month at 25% discount (75% of price)
+  const calculatedTotal = monthlyVal > 0 ? (monthlyVal * 10) + (monthlyVal * 0.75) : 0;
+  const totalContribution = calculatedTotal.toString();
 
   const handleCreateDocument = async () => {
     if (!name || !email || !mobile || !monthlyInstallment) {
