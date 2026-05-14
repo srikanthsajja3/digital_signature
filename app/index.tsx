@@ -8,22 +8,22 @@ import DocumentList from '../components/DocumentList';
 import { getShareableLink, shareToWhatsApp } from '../utils/links';
 
 export default function AdminDashboard() {
-  const [name, setName] = useState('Test User');
-  const [dob, setDob] = useState('01/01/1990');
-  const [mobile, setMobile] = useState('9876543210');
-  const [email, setEmail] = useState('test@example.com');
-  const [address, setAddress] = useState('123 Test Street, Sample City');
+  const [name, setName] = useState('');
+  const [dob, setDob] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
   const [idProofType, setIdProofType] = useState('Aadhaar');
-  const [idProofNumber, setIdProofNumber] = useState('1234-5678-9012');
+  const [idProofNumber, setIdProofNumber] = useState('');
   
-  const [monthlyInstallment, setMonthlyInstallment] = useState('5000');
-  const [firstInstallmentDate, setFirstInstallmentDate] = useState('15/05/2026');
-  const [preferredDate, setPreferredDate] = useState('5th');
+  const [monthlyInstallment, setMonthlyInstallment] = useState('');
+  const [firstInstallmentDate, setFirstInstallmentDate] = useState('');
+  const [preferredDate, setPreferredDate] = useState('');
   const [modeOfPayment, setModeOfPayment] = useState('CASH');
 
-  const [nomineeName, setNomineeName] = useState('Nominee Person');
-  const [nomineeRelation, setNomineeRelation] = useState('Spouse');
-  const [nomineeContact, setNomineeContact] = useState('9000000000');
+  const [nomineeName, setNomineeName] = useState('');
+  const [nomineeRelation, setNomineeRelation] = useState('');
+  const [nomineeContact, setNomineeContact] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState('');
