@@ -19,7 +19,7 @@ export function getOptimizedImageUrl(
       transform: {
         width,
         quality,
-        format,
+        format: format as any,
       },
     });
 

@@ -103,7 +103,7 @@ export default function SigningPage() {
         console.log('PDF missing from storage, attempting to regenerate on the fly...');
         try {
           const regeneratedPdfBytes = await generateUnsignedPDF(document.customer_name, document.customer_email, document.details);
-          pdfData = new Blob([regeneratedPdfBytes], { type: 'application/pdf' });
+          pdfData = new Blob([regeneratedPdfBytes as any], { type: 'application/pdf' });
           console.log('PDF regenerated successfully, size:', pdfData.size);
           
           // Optionally upload it back so it's there next time
@@ -138,7 +138,7 @@ export default function SigningPage() {
 
       // 3. Upload Signed PDF to Supabase Storage
       const signedFileName = `signed_${id}.pdf`;
-      const uploadData = Platform.OS === 'web' ? new Blob([signedPdfBytes], { type: 'application/pdf' }) : signedPdfBytes;
+      const uploadData = Platform.OS === 'web' ? new Blob([signedPdfBytes as any], { type: 'application/pdf' }) : signedPdfBytes;
       
       console.log('Uploading signed PDF:', signedFileName);
       const { error: uploadError } = await supabase.storage
@@ -167,7 +167,17 @@ export default function SigningPage() {
       }
       console.log('Database status updated successfully.');
 
-      // 5. Get Public URL for the signed document
+      // 5. Delete the unsigned PDF to save storage space
+      try {
+        console.log('Deleting unsigned PDF:', unsignedFileName);
+        await supabase.storage
+          .from('pdfs')
+          .remove([unsignedFileName]);
+      } catch (err) {
+        console.warn('Failed to delete unsigned PDF:', err);
+      }
+
+      // 6. Get Public URL for the signed document
       const { data: urlData } = supabase.storage
         .from('pdfs')
         .getPublicUrl(signedFileName);
