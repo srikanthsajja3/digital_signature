@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Linking, Platform, Modal } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../utils/supabase';
 import SignaturePad from '../../components/SignaturePad';
@@ -10,6 +10,7 @@ export default function SigningPage() {
   const [document, setDocument] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [signedUrl, setSignedUrl] = useState('');
 
   useEffect(() => {
@@ -50,7 +51,6 @@ export default function SigningPage() {
 
   const handleDownload = async () => {
     if (signedUrl) {
-      // For web, we can just open the URL in a new tab
       Linking.openURL(signedUrl);
     } else {
       Alert.alert('Error', 'Download link not available.');
@@ -106,7 +106,6 @@ export default function SigningPage() {
           pdfData = new Blob([regeneratedPdfBytes as any], { type: 'application/pdf' });
           console.log('PDF regenerated successfully, size:', pdfData.size);
           
-          // Optionally upload it back so it's there next time
           console.log('Uploading regenerated PDF back to storage...');
           const { error: reUploadError } = await supabase.storage
             .from('pdfs')
@@ -114,7 +113,6 @@ export default function SigningPage() {
           
           if (reUploadError) {
             console.error('Failed to re-upload regenerated PDF:', reUploadError.message);
-            // We continue anyway since we have the data in memory
           } else {
             console.log('Regenerated PDF uploaded back successfully.');
           }
@@ -127,7 +125,6 @@ export default function SigningPage() {
       if (!pdfData) throw new Error('Could not retrieve or generate PDF data.');
 
       console.log('Processing PDF data for signing...');
-      // Convert Blob to Uint8Array
       const arrayBuffer = await pdfData.arrayBuffer();
       const pdfBytes = new Uint8Array(arrayBuffer);
 
@@ -154,28 +151,18 @@ export default function SigningPage() {
       }
       console.log('Signed PDF uploaded successfully.');
 
-      // 4. Update Document Status
-      console.log('Updating document status to "signed" in database...');
-      const { error: updateError } = await supabase
-        .from('documents')
-        .update({ status: 'signed' })
-        .eq('id', id);
+      // 4. Update Document Status & Clean up Unsigned PDF concurrently
+      console.log('Updating status & cleaning up temporary files...');
+      const [updateRes] = await Promise.all([
+        supabase.from('documents').update({ status: 'signed' }).eq('id', id),
+        supabase.storage.from('pdfs').remove([unsignedFileName]).catch(err => console.warn('Remove failed:', err)),
+      ]);
 
-      if (updateError) {
-        console.error('Status update failed:', updateError);
-        throw updateError;
+      if (updateRes.error) {
+        console.error('Status update failed:', updateRes.error);
+        throw updateRes.error;
       }
       console.log('Database status updated successfully.');
-
-      // 5. Delete the unsigned PDF to save storage space
-      try {
-        console.log('Deleting unsigned PDF:', unsignedFileName);
-        await supabase.storage
-          .from('pdfs')
-          .remove([unsignedFileName]);
-      } catch (err) {
-        console.warn('Failed to delete unsigned PDF:', err);
-      }
 
       // 6. Get Public URL for the signed document
       const { data: urlData } = supabase.storage
@@ -184,14 +171,15 @@ export default function SigningPage() {
 
       setSignedUrl(urlData.publicUrl);
       console.log('Process complete. Signed URL:', urlData.publicUrl);
-      Alert.alert('Success', 'Document signed successfully!');
+      
+      // Close loading modal and show success modal
+      setSigning(false);
+      setShowSuccessModal(true);
       fetchDocument(); 
     } catch (error: any) {
       console.error('CRITICAL handleSignature Error:', error);
-      Alert.alert('Error', error.message || 'Failed to sign document.');
-    } finally {
       setSigning(false);
-      console.log('handleSignature process finished.');
+      Alert.alert('Error', error.message || 'Failed to sign document.');
     }
   };
 
@@ -199,7 +187,7 @@ export default function SigningPage() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#007bff" />
-        <Text>Loading Document...</Text>
+        <Text style={{ marginTop: 10 }}>Loading Document...</Text>
       </View>
     );
   }
@@ -259,7 +247,6 @@ export default function SigningPage() {
         <>
           <Text style={styles.instruction}>Please sign in the box below to complete the application.</Text>
           <SignaturePad onOK={handleSignature} />
-          {signing && <ActivityIndicator style={{ marginTop: 10 }} />}
         </>
       ) : (
         <View style={styles.successContainer}>
@@ -274,11 +261,60 @@ export default function SigningPage() {
           ) : null}
         </View>
       )}
+
+      {/* 1. ROTATING LOADING POPUP MODAL */}
+      <Modal
+        visible={signing}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <ActivityIndicator size="large" color="#007bff" style={{ transform: [{ scale: 1.4 }], marginVertical: 15 }} />
+            <Text style={styles.modalTitle}>Processing Signature...</Text>
+            <Text style={styles.modalSubtitle}>Please wait while your document is being digitally signed and secured.</Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2. SUCCESS POPUP MODAL */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.successBadge}>
+              <Text style={styles.checkmarkIcon}>✓</Text>
+            </View>
+            <Text style={styles.modalTitle}>Signed Successfully!</Text>
+            <Text style={styles.modalSubtitle}>Your signature has been embedded and the application is officially completed.</Text>
+            
+            {signedUrl ? (
+              <TouchableOpacity 
+                style={[styles.downloadButton, { marginTop: 15 }]}
+                onPress={handleDownload}
+              >
+                <Text style={styles.downloadButtonText}>Download Signed PDF</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity 
+              style={styles.closeModalButton}
+              onPress={() => setShowSuccessModal(false)}
+            >
+              <Text style={styles.closeModalButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
+}function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}:</Text>
@@ -289,127 +325,219 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: '#f0f2f5',
+    padding: 24,
+    backgroundColor: '#1C1209',
     flexGrow: 1,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#1C1209',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 24,
     textAlign: 'center',
-    color: '#1a1a1a',
+    color: '#D4AF37',
+    letterSpacing: 0.5,
   },
   infoCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 25,
+    backgroundColor: '#2A1D11',
+    padding: 24,
+    borderRadius: 16,
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#e1e4e8',
-    elevation: 2,
+    borderColor: '#4A3520',
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
   sectionHeader: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#007bff',
-    letterSpacing: 1,
-    marginBottom: 10,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#D4AF37',
+    letterSpacing: 1.2,
+    marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f5',
-    paddingBottom: 5,
+    borderBottomColor: '#4A3520',
+    paddingBottom: 6,
+    textTransform: 'uppercase',
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
   detailLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#A39282',
     flex: 1,
+    fontWeight: '500',
   },
   detailValue: {
     fontSize: 14,
-    color: '#1a1a1a',
-    fontWeight: '500',
+    color: '#FFFFFF',
+    fontWeight: '600',
     flex: 1.5,
     textAlign: 'right',
   },
   benefitBox: {
-    backgroundColor: '#fff9e6',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
+    backgroundColor: '#3D2B1A',
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 12,
     borderWidth: 1,
-    borderColor: '#ffeeba',
+    borderColor: '#5C4428',
   },
   benefitText: {
-    fontSize: 12,
-    color: '#856404',
-    fontStyle: 'italic',
-    lineHeight: 18,
+    fontSize: 13,
+    color: '#F3E5AB',
+    fontWeight: '500',
+    lineHeight: 19,
   },
   statusContainer: {
     marginTop: 20,
-    paddingTop: 15,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f2f5',
+    borderTopColor: '#3D2B1A',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoLabel: {
-    fontWeight: 'bold',
-    color: '#555',
+    fontWeight: '700',
+    color: '#D4AF37',
     marginRight: 10,
+    fontSize: 15,
   },
   status: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '800',
+    fontSize: 13,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    letterSpacing: 0.5,
   },
   pending: {
-    color: '#fd7e14',
+    backgroundColor: '#3D2B1A',
+    color: '#D4AF37',
+    borderColor: '#5C4428',
   },
   signed: {
-    color: '#28a745',
+    backgroundColor: '#1B3B2B',
+    color: '#4CAF50',
+    borderColor: '#2E5C43',
   },
   instruction: {
     fontSize: 16,
-    color: '#495057',
-    marginBottom: 15,
+    color: '#E5D3B3',
+    marginBottom: 16,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   successContainer: {
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 12,
   },
   successText: {
-    fontSize: 18,
-    color: '#28a745',
-    fontWeight: 'bold',
+    fontSize: 20,
+    color: '#4CAF50',
+    fontWeight: '800',
     marginBottom: 20,
   },
   downloadButton: {
-    backgroundColor: '#007bff',
-    padding: 18,
-    borderRadius: 8,
+    backgroundColor: '#D4AF37',
+    paddingVertical: 16,
+    borderRadius: 10,
     width: '100%',
     alignItems: 'center',
+    shadowColor: '#D4AF37',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   downloadButtonText: {
-    color: '#fff',
+    color: '#1C1209',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#2A1D11',
+    borderRadius: 20,
+    padding: 28,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#4A3520',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#D4AF37',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  successBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  checkmarkIcon: {
+    color: '#FFFFFF',
+    fontSize: 34,
+    fontWeight: '800',
+  },
+  closeModalButton: {
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    backgroundColor: '#3D2B1A',
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#4A3520',
+  },
+  closeModalButtonText: {
+    color: '#D4AF37',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

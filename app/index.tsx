@@ -133,17 +133,17 @@ export default function AdminDashboard() {
       
       <View style={styles.form}>
         <Text style={styles.sectionTitle}>Applicant Details</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Full Name *" />
-        <TextInput style={styles.input} value={dob} onChangeText={setDob} placeholder="Date of Birth (DD/MM/YYYY)" />
-        <TextInput style={styles.input} value={mobile} onChangeText={setMobile} placeholder="Mobile Number *" keyboardType="phone-pad" />
-        <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email ID *" keyboardType="email-address" />
-        <TextInput style={[styles.input, { height: 60 }]} value={address} onChangeText={setAddress} placeholder="Address" multiline />
+        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Full Name *" placeholderTextColor="#A39282" />
+        <TextInput style={styles.input} value={dob} onChangeText={setDob} placeholder="Date of Birth (DD/MM/YYYY)" placeholderTextColor="#A39282" />
+        <TextInput style={styles.input} value={mobile} onChangeText={setMobile} placeholder="Mobile Number *" keyboardType="phone-pad" placeholderTextColor="#A39282" />
+        <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email ID *" keyboardType="email-address" placeholderTextColor="#A39282" />
+        <TextInput style={[styles.input, { height: 60 }]} value={address} onChangeText={setAddress} placeholder="Address" multiline placeholderTextColor="#A39282" />
         
         {renderDropdown('ID Proof Type', idProofType, setIdProofType, ['Aadhaar', 'PAN', 'Passport', 'Driving License'])}
-        <TextInput style={styles.input} value={idProofNumber} onChangeText={setIdProofNumber} placeholder="ID Proof Number" />
+        <TextInput style={styles.input} value={idProofNumber} onChangeText={setIdProofNumber} placeholder="ID Proof Number" placeholderTextColor="#A39282" />
 
         <Text style={styles.sectionTitle}>Scheme Details</Text>
-        <TextInput style={styles.input} value={monthlyInstallment} onChangeText={setMonthlyInstallment} placeholder="Monthly Installment Amount *" keyboardType="numeric" />
+        <TextInput style={styles.input} value={monthlyInstallment} onChangeText={setMonthlyInstallment} placeholder="Monthly Installment Amount *" keyboardType="numeric" placeholderTextColor="#A39282" />
         <Text style={styles.readOnlyText}>Duration: 11 Months (Default)</Text>
         <Text style={styles.readOnlyText}>Total Contribution: ₹ {totalContribution}</Text>
         <View style={styles.benefitBox}>
@@ -152,13 +152,13 @@ export default function AdminDashboard() {
 
         <Text style={styles.sectionTitle}>Payment Details</Text>
         {renderDropdown('Mode of Payment', modeOfPayment, setModeOfPayment, ['CASH', 'UPI', 'CARD', 'BANK TRANSFER'])}
-        <TextInput style={styles.input} value={firstInstallmentDate} onChangeText={setFirstInstallmentDate} placeholder="First Installment Date" />
-        <TextInput style={styles.input} value={preferredDate} onChangeText={setPreferredDate} placeholder="Preferred Monthly Payment Date (e.g. 5th)" />
+        <TextInput style={styles.input} value={firstInstallmentDate} onChangeText={setFirstInstallmentDate} placeholder="First Installment Date" placeholderTextColor="#A39282" />
+        <TextInput style={styles.input} value={preferredDate} onChangeText={setPreferredDate} placeholder="Preferred Monthly Payment Date (e.g. 5th)" placeholderTextColor="#A39282" />
 
         <Text style={styles.sectionTitle}>Nominee Details (Optional)</Text>
-        <TextInput style={styles.input} value={nomineeName} onChangeText={setNomineeName} placeholder="Nominee Name" />
-        <TextInput style={styles.input} value={nomineeRelation} onChangeText={setNomineeRelation} placeholder="Relationship" />
-        <TextInput style={styles.input} value={nomineeContact} onChangeText={setNomineeContact} placeholder="Contact Number" keyboardType="phone-pad" />
+        <TextInput style={styles.input} value={nomineeName} onChangeText={setNomineeName} placeholder="Nominee Name" placeholderTextColor="#A39282" />
+        <TextInput style={styles.input} value={nomineeRelation} onChangeText={setNomineeRelation} placeholder="Relationship" placeholderTextColor="#A39282" />
+        <TextInput style={styles.input} value={nomineeContact} onChangeText={setNomineeContact} placeholder="Contact Number" keyboardType="phone-pad" placeholderTextColor="#A39282" />
 
         <TouchableOpacity 
           style={[styles.button, loading && styles.buttonDisabled]} 
@@ -208,37 +208,38 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#f5f5f5', flexGrow: 1 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333', textAlign: 'center' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 15, marginBottom: 10, color: '#007bff', borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 5 },
-  form: { backgroundColor: '#fff', padding: 20, borderRadius: 10, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-  label: { fontSize: 14, marginBottom: 5, color: '#666' },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 5, padding: 10, marginBottom: 12, fontSize: 16 },
-  readOnlyText: { fontSize: 16, marginBottom: 10, color: '#333', fontWeight: '500' },
-  benefitBox: { backgroundColor: '#e7f3ff', padding: 10, borderRadius: 5, marginBottom: 15 },
-  benefitText: { fontSize: 13, color: '#0056b3', fontStyle: 'italic' },
-  fieldContainer: { marginBottom: 15 },
+  container: { padding: 24, backgroundColor: '#1C1209', flexGrow: 1 },
+  title: { fontSize: 28, fontWeight: '800', marginBottom: 24, color: '#D4AF37', textAlign: 'center', letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 20, marginBottom: 14, color: '#D4AF37', textTransform: 'uppercase', letterSpacing: 1, borderBottomWidth: 1, borderBottomColor: '#4A3520', paddingBottom: 6 },
+  form: { backgroundColor: '#2A1D11', padding: 24, borderRadius: 16, borderWidth: 1, borderColor: '#4A3520', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12 },
+  label: { fontSize: 13, fontWeight: '600', marginBottom: 6, color: '#D4AF37' },
+  input: { borderWidth: 1, borderColor: '#4A3520', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 15, color: '#FFFFFF', backgroundColor: '#3D2B1A' },
+  readOnlyText: { fontSize: 15, marginBottom: 10, color: '#E5D3B3', fontWeight: '600' },
+  benefitBox: { backgroundColor: '#3D2B1A', padding: 14, borderRadius: 10, marginBottom: 18, borderWidth: 1, borderColor: '#5C4428' },
+  benefitText: { fontSize: 13, color: '#F3E5AB', fontWeight: '500', lineHeight: 19 },
+  fieldContainer: { marginBottom: 16 },
   pickerContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: '#007bff', backgroundColor: '#fff' },
-  chipSelected: { backgroundColor: '#007bff' },
-  chipText: { color: '#007bff', fontSize: 12 },
-  chipTextSelected: { color: '#fff' },
-  button: { backgroundColor: '#007bff', padding: 15, borderRadius: 5, alignItems: 'center', marginTop: 10 },
-  buttonDisabled: { backgroundColor: '#ccc' },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  linkContainer: { marginTop: 30, padding: 20, backgroundColor: '#e9ecef', borderRadius: 10 },
-  linkLabel: { fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
-  linkText: { backgroundColor: '#fff', padding: 10, borderRadius: 5, color: '#007bff' },
+  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#4A3520', backgroundColor: '#3D2B1A' },
+  chipSelected: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
+  chipText: { color: '#CCCCCC', fontSize: 13, fontWeight: '500' },
+  chipTextSelected: { color: '#1C1209', fontWeight: '800' },
+  button: { backgroundColor: '#D4AF37', paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 16, shadowColor: '#D4AF37', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  buttonDisabled: { backgroundColor: '#5C4A28' },
+  buttonText: { color: '#1C1209', fontSize: 17, fontWeight: '800', letterSpacing: 0.5 },
+  linkContainer: { marginTop: 28, padding: 20, backgroundColor: '#2A1D11', borderRadius: 14, borderWidth: 1, borderColor: '#4A3520' },
+  linkLabel: { fontSize: 15, fontWeight: '700', marginBottom: 10, color: '#D4AF37' },
+  linkText: { backgroundColor: '#3D2B1A', padding: 12, borderRadius: 8, color: '#D4AF37', fontWeight: '600', borderWidth: 1, borderColor: '#4A3520' },
   linkButtons: {
     flexDirection: 'row',
-    marginTop: 10,
+    marginTop: 12,
+    gap: 10,
   },
   copyButton: {
-    backgroundColor: '#28a745',
-    padding: 12,
-    borderRadius: 5,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  copyButtonText: { color: '#fff', fontWeight: 'bold' },
+  copyButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
 });
 
